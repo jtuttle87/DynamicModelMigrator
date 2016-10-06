@@ -47,13 +47,24 @@ namespace DynamicModelMigrator.Test
         }
 
         [TestMethod]
-        public void ShouldCreateAndThenMigrateTable()
+        public void ShouldCreateAndThenMigrateTableByAddingColumns()
         {
             DynamicModelMigrator.Migrate<TestClass>(TEST_DATA_SOURCE, "TESTCLASS").Wait();
             var exists = DynamicModelMigrator.TableExists(new System.Data.SqlClient.SqlConnectionStringBuilder(TEST_DATA_SOURCE), "TestClass").Result;
             Xunit.Assert.True(exists);
             DynamicModelMigrator.Migrate<MigratedTestClass>(TEST_DATA_SOURCE, "TESTCLASS").Wait();
             var matchesClass = TestHelper.DoesClassMatchType<MigratedTestClass>(TEST_DATA_SOURCE, "TESTCLASS").Result;
+            Xunit.Assert.True(matchesClass);
+        }
+
+        [TestMethod]
+        public void ShouldCreateAndThenMigrateTableByRemovingColumns()
+        {
+            DynamicModelMigrator.Migrate<MigratedTestClass>(TEST_DATA_SOURCE, "TESTCLASS").Wait();
+            var exists = DynamicModelMigrator.TableExists(new System.Data.SqlClient.SqlConnectionStringBuilder(TEST_DATA_SOURCE), "TestClass").Result;
+            Xunit.Assert.True(exists);
+            DynamicModelMigrator.Migrate<TestClass>(TEST_DATA_SOURCE, "TESTCLASS").Wait();
+            var matchesClass = TestHelper.DoesClassMatchType<TestClass>(TEST_DATA_SOURCE, "TESTCLASS").Result;
             Xunit.Assert.True(matchesClass);
         }
     }
@@ -99,7 +110,7 @@ namespace DynamicModelMigrator.Test
         public async static Task<bool> DoesClassMatchType<T>(string conn, string tableName)
         {
             var columnMap = await DynamicModelMigrator.GetColumnMap(new SqlConnection(conn), tableName);
-            var typeMap = DynamicModelMigrator.GetTypeMap<MigratedTestClass>();
+            var typeMap = DynamicModelMigrator.GetTypeMap<T>();
             var columns = new List<string>();
             var typeProperties = new List<string>();
 

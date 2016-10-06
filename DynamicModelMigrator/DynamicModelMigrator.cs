@@ -48,14 +48,22 @@ namespace DynamicModelMigrator
                 var columnMap = await GetColumnMap(conn, tableName);
                 var typeMap = GetTypeMap<T>();
 
-                var missingColumns = typeMap.Keys.Where(k => columnMap.Keys.Contains(k.Name) == false);
-
                 // add columns that don't exist
+                var missingColumns = typeMap.Keys.Where(k => columnMap.Keys.Contains(k.Name) == false);
                 foreach(var column in missingColumns)
                 {
                     var isNullable = Nullable.GetUnderlyingType(typeMap[column]) != null;
                     var nullText = isNullable ? "NULL" : "NOT NULL";
                     var sql = $"ALTER TABLE {tableName} ADD {column.Name} {CLRToSqlDbTypeMapper.GetSqlDbTypeFromClrType(typeMap[column])} {nullText}";
+                    var alterCmd = new SqlCommand(sql, conn);
+                    alterCmd.ExecuteNonQuery();
+                }
+
+                // remove columns that shouldn't exists
+                var columnsToRemove = columnMap.Keys.Where(x => typeMap.Keys.All(tm => tm.Name != x));
+                foreach (var columnToRemove in columnsToRemove)
+                {
+                    var sql = $"ALTER TABLE {tableName} DROP COLUMN {columnToRemove}";
                     var alterCmd = new SqlCommand(sql, conn);
                     alterCmd.ExecuteNonQuery();
                 }
