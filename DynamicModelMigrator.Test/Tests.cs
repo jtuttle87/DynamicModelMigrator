@@ -67,10 +67,45 @@ namespace DynamicModelMigrator.Test
             var matchesClass = TestHelper.DoesClassMatchType<TestClass>(TEST_DATA_SOURCE, "TESTCLASS").Result;
             Xunit.Assert.True(matchesClass);
         }
+
+        [TestMethod]
+        public void ShouldCreateAndThenMigrateTableByChangingColumnDataTypesAndMigratingDataButFailingBecauseWTFMigratesAStringToAnInteger()
+        {
+            DynamicModelMigrator.Migrate<MigratedTestClass>(TEST_DATA_SOURCE, "TESTCLASS").Wait();
+            var exists = DynamicModelMigrator.TableExists(new System.Data.SqlClient.SqlConnectionStringBuilder(TEST_DATA_SOURCE), "TestClass").Result;
+            Xunit.Assert.True(exists);
+            TestHelper.AddRecord(TEST_DATA_SOURCE, "TESTCLASS");
+            DynamicModelMigrator.Migrate<AlteredTestClass>(TEST_DATA_SOURCE, "TESTCLASS").Wait();
+            var matchesClass = TestHelper.DoesClassMatchType<AlteredTestClass>(TEST_DATA_SOURCE, "TESTCLASS").Result;
+            Xunit.Assert.True(matchesClass);
+        }
+
+        [TestMethod]
+        public void ShouldCreateAndThenMigrateTableByChangingColumnDataTypesAndMigratingData()
+        {
+            DynamicModelMigrator.Migrate<MigratedTestClass>(TEST_DATA_SOURCE, "TESTCLASS").Wait();
+            var exists = DynamicModelMigrator.TableExists(new System.Data.SqlClient.SqlConnectionStringBuilder(TEST_DATA_SOURCE), "TestClass").Result;
+            Xunit.Assert.True(exists);
+            TestHelper.AddRecord(TEST_DATA_SOURCE, "TESTCLASS");
+            DynamicModelMigrator.Migrate<AlteredMigrationTestClass>(TEST_DATA_SOURCE, "TESTCLASS").Wait();
+            var matchesClass = TestHelper.DoesClassMatchType<AlteredMigrationTestClass>(TEST_DATA_SOURCE, "TESTCLASS").Result;
+            Xunit.Assert.True(matchesClass);
+        }
+    }
+
+    public class MigrationTestClass : ClassWithId
+    {
+        public long LongField { get; set; }
+    }
+
+    public class AlteredMigrationTestClass : ClassWithId
+    {
+        public int LongField { get; set; }
     }
 
     public class TestClass : ClassWithId
     {
+        [StringLength(6)]
         public string StringField { get; set; }
     }
 
@@ -83,8 +118,39 @@ namespace DynamicModelMigrator.Test
         public long LongField { get; set; }
     }
 
+    public class AlteredTestClass : ClassWithId
+    {
+        public int StringField { get; set; }
+        public string IntegerField { get; set; }
+        public long DoubleField { get; set; }
+        public string BooleanField { get; set; }
+        public double LongField { get; set; }
+    }
+
     public static class TestHelper
     {
+        public static void AddRecord(string connection, string db)
+        {
+            var sqlConnectionBuilder = new SqlConnectionStringBuilder(connection);
+            using (var conn = new SqlConnection(sqlConnectionBuilder.ToString()))
+            {
+                conn.Open();
+                var command = new SqlCommand($"INSERT INTO {db}(StringField, IntegerField, DoubleField, BooleanField, LongField) VALUES('A', 1, 1.1, 0, 9999) ", conn);
+                command.ExecuteNonQuery();
+            }
+        }
+
+        public static void AddMigrateableRecord(string connection, string db)
+        {
+            var sqlConnectionBuilder = new SqlConnectionStringBuilder(connection);
+            using (var conn = new SqlConnection(sqlConnectionBuilder.ToString()))
+            {
+                conn.Open();
+                var command = new SqlCommand($"INSERT INTO {db}(LongField) VALUES(9999) ", conn);
+                command.ExecuteNonQuery();
+            }
+        }
+
         public static void RemoveDatabase(string connection, string db)
         {
             try

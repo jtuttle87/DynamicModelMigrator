@@ -54,7 +54,17 @@ namespace DynamicModelMigrator
                 {
                     var isNullable = Nullable.GetUnderlyingType(typeMap[column]) != null;
                     var nullText = isNullable ? "NULL" : "NOT NULL";
-                    var sql = $"ALTER TABLE {tableName} ADD {column.Name} {CLRToSqlDbTypeMapper.GetSqlDbTypeFromClrType(typeMap[column])} {nullText}";
+                    var attributes = typeof(T)
+                                       .GetProperty(column.Name)
+                                       .GetCustomAttributes(false)
+                                       .ToDictionary(a => a.GetType().Name, a => a);
+                    var stringLengthAttribute = attributes.Any(x => x.Key == "StringLengthAttribute") ? attributes["StringLengthAttribute"] as StringLengthAttribute : null;
+                    var lengthText = string.Empty;
+                    if(stringLengthAttribute != null)
+                    {
+                        lengthText = $"({stringLengthAttribute.Length})";
+                    }
+                    var sql = $"ALTER TABLE {tableName} ADD {column.Name} {CLRToSqlDbTypeMapper.GetSqlDbTypeFromClrType(typeMap[column])}{lengthText} {nullText}";
                     var alterCmd = new SqlCommand(sql, conn);
                     alterCmd.ExecuteNonQuery();
                 }
@@ -68,8 +78,66 @@ namespace DynamicModelMigrator
                     alterCmd.ExecuteNonQuery();
                 }
 
+                // migrate columns where the datatype has changed
+                var columnsToMigrate = GetColumnsToMigrate(columnMap, typeMap);
+                foreach(var columnToMigrate in columnsToMigrate)
+                {
+                    // if this fails then the conversion between types was not possible
+                    try
+                    {
+                        var sql = $"ALTER TABLE {tableName} ALTER COLUMN {columnToMigrate.Key} {CLRToSqlDbTypeMapper.GetSqlDbTypeFromClrType(columnToMigrate.Value)}";
+                        var alterCmd = new SqlCommand(sql, conn);
+                        alterCmd.ExecuteNonQuery();
+                    }
+                    catch(Exception ex)
+                    {
+                        // so rename
+                        var sql = $"exec sp_rename '[{tableName}].[{columnToMigrate.Key}]', 'TEMP_{columnToMigrate.Key}_TEMP', 'COLUMN';";
+                        var renameCmd = new SqlCommand(sql, conn);
+                        renameCmd.ExecuteNonQuery();
+
+                        // add column
+                        sql = $"ALTER TABLE {tableName} ADD {columnToMigrate.Key} {CLRToSqlDbTypeMapper.GetSqlDbTypeFromClrType(columnToMigrate.Value)}";
+                        var alterCmd = new SqlCommand(sql, conn);
+                        alterCmd.ExecuteNonQuery();
+
+                        // attempt conversion, if this fails than eff it
+                        try
+                        {
+                            sql = $"UPDATE {tableName} SET {columnToMigrate.Key} = convert({CLRToSqlDbTypeMapper.GetSqlDbTypeFromClrType(columnToMigrate.Value)}, TEMP_{columnToMigrate.Key}_TEMP) WHERE TEMP_{columnToMigrate.Key}_TEMP is not null";
+                            var updateCmd = new SqlCommand(sql, conn);
+                            updateCmd.ExecuteNonQuery();
+                        }
+                        catch(Exception exception)
+                        {
+
+                        }
+                   
+
+                        // drop temp
+                        sql = $"ALTER TABLE {tableName} DROP COLUMN TEMP_{columnToMigrate.Key}_TEMP";
+                        var dropcmd = new SqlCommand(sql, conn);
+                        dropcmd.ExecuteNonQuery();
+                    }
+                }
+
                 conn.Close();
             }
+        }
+
+        private static Dictionary<string, Type> GetColumnsToMigrate(Dictionary<string, Type> columnMap, Dictionary<System.Reflection.PropertyInfo, Type> typeMap)
+        {
+            var columnsToMigrate = new Dictionary<string, Type>();
+            foreach (var columnName in columnMap.Keys)
+            {
+                var typeColumn = typeMap.Keys.FirstOrDefault(x => x.Name == columnName);
+                if (typeColumn != null && typeMap[typeColumn] != columnMap[columnName])
+                {
+                    columnsToMigrate[columnName] = typeMap[typeColumn];
+                }
+            }
+
+            return columnsToMigrate;
         }
 
         public static Dictionary<System.Reflection.PropertyInfo,Type> GetTypeMap<T>()
