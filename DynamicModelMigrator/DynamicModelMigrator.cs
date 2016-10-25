@@ -183,7 +183,7 @@ namespace DynamicModelMigrator
                 using (var conn = new SqlConnection(connection.ToString()))
                 {
                     await conn.OpenAsync();
-                    var sql = $"CREATE TABLE {table} (Id int PRIMARY KEY IDENTITY)";
+                    var sql = $"CREATE TABLE {table} (Id int PRIMARY KEY IDENTITY(1,1))";
                     var cmd = new SqlCommand(sql, conn);
                     await cmd.ExecuteNonQueryAsync();
                 }
