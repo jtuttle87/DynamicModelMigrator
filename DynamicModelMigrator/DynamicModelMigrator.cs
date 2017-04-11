@@ -13,7 +13,7 @@ namespace DynamicModelMigrator
         public int Id { get; set; }
     }
 
-    public static class DynamicModelMigrator
+    public static class DMM
     {
         
         public async static Task Migrate<T>(string connectionString, string tableName = null) where T: ClassWithId
@@ -62,7 +62,8 @@ namespace DynamicModelMigrator
                     var lengthText = string.Empty;
                     if(stringLengthAttribute != null)
                     {
-                        lengthText = $"({stringLengthAttribute.Length})";
+                        var length = stringLengthAttribute.Length > 0 ? stringLengthAttribute.Length.ToString() : "max";
+                        lengthText = $"({length})";
                     }
                     var sql = $"ALTER TABLE {tableName} ADD {column.Name} {CLRToSqlDbTypeMapper.GetSqlDbTypeFromClrType(typeMap[column])}{lengthText} {nullText}";
                     var alterCmd = new SqlCommand(sql, conn);

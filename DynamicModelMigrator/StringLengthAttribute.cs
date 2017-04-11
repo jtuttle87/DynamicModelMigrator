@@ -10,5 +10,10 @@ namespace DynamicModelMigrator
         {
             Length = length;
         }
+
+        public StringLengthAttribute()
+        {
+
+        }
     }
 }

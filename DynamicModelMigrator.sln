@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.25123.0
+VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DynamicModelMigrator", "DynamicModelMigrator\DynamicModelMigrator.csproj", "{107CA8E5-ACFE-4D4B-B927-B69DF24A108A}"
 EndProject
@@ -9,14 +9,39 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DynamicModelMigrator.Test",
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		4.5.1|Any CPU = 4.5.1|Any CPU
+		4.5.2|Any CPU = 4.5.2|Any CPU
+		4.5|Any CPU = 4.5|Any CPU
+		4.6.1|Any CPU = 4.6.1|Any CPU
+		4.6|Any CPU = 4.6|Any CPU
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{107CA8E5-ACFE-4D4B-B927-B69DF24A108A}.4.5.1|Any CPU.ActiveCfg = Release|Any CPU
+		{107CA8E5-ACFE-4D4B-B927-B69DF24A108A}.4.5.1|Any CPU.Build.0 = Release|Any CPU
+		{107CA8E5-ACFE-4D4B-B927-B69DF24A108A}.4.5.2|Any CPU.ActiveCfg = 4.5.2|Any CPU
+		{107CA8E5-ACFE-4D4B-B927-B69DF24A108A}.4.5.2|Any CPU.Build.0 = 4.5.2|Any CPU
+		{107CA8E5-ACFE-4D4B-B927-B69DF24A108A}.4.5|Any CPU.ActiveCfg = Debug|Any CPU
+		{107CA8E5-ACFE-4D4B-B927-B69DF24A108A}.4.5|Any CPU.Build.0 = Debug|Any CPU
+		{107CA8E5-ACFE-4D4B-B927-B69DF24A108A}.4.6.1|Any CPU.ActiveCfg = 4.6.1|Any CPU
+		{107CA8E5-ACFE-4D4B-B927-B69DF24A108A}.4.6.1|Any CPU.Build.0 = 4.6.1|Any CPU
+		{107CA8E5-ACFE-4D4B-B927-B69DF24A108A}.4.6|Any CPU.ActiveCfg = 4.6|Any CPU
+		{107CA8E5-ACFE-4D4B-B927-B69DF24A108A}.4.6|Any CPU.Build.0 = 4.6|Any CPU
 		{107CA8E5-ACFE-4D4B-B927-B69DF24A108A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{107CA8E5-ACFE-4D4B-B927-B69DF24A108A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{107CA8E5-ACFE-4D4B-B927-B69DF24A108A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{107CA8E5-ACFE-4D4B-B927-B69DF24A108A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{706D925E-6911-4A83-ABC6-A6EEFFDEDC95}.4.5.1|Any CPU.ActiveCfg = Release|Any CPU
+		{706D925E-6911-4A83-ABC6-A6EEFFDEDC95}.4.5.1|Any CPU.Build.0 = Release|Any CPU
+		{706D925E-6911-4A83-ABC6-A6EEFFDEDC95}.4.5.2|Any CPU.ActiveCfg = 4.5.2|Any CPU
+		{706D925E-6911-4A83-ABC6-A6EEFFDEDC95}.4.5.2|Any CPU.Build.0 = 4.5.2|Any CPU
+		{706D925E-6911-4A83-ABC6-A6EEFFDEDC95}.4.5|Any CPU.ActiveCfg = Release|Any CPU
+		{706D925E-6911-4A83-ABC6-A6EEFFDEDC95}.4.5|Any CPU.Build.0 = Release|Any CPU
+		{706D925E-6911-4A83-ABC6-A6EEFFDEDC95}.4.6.1|Any CPU.ActiveCfg = 4.6.1|Any CPU
+		{706D925E-6911-4A83-ABC6-A6EEFFDEDC95}.4.6.1|Any CPU.Build.0 = 4.6.1|Any CPU
+		{706D925E-6911-4A83-ABC6-A6EEFFDEDC95}.4.6|Any CPU.ActiveCfg = 4.6|Any CPU
+		{706D925E-6911-4A83-ABC6-A6EEFFDEDC95}.4.6|Any CPU.Build.0 = 4.6|Any CPU
 		{706D925E-6911-4A83-ABC6-A6EEFFDEDC95}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{706D925E-6911-4A83-ABC6-A6EEFFDEDC95}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{706D925E-6911-4A83-ABC6-A6EEFFDEDC95}.Release|Any CPU.ActiveCfg = Release|Any CPU
