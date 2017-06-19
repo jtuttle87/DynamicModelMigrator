@@ -116,6 +116,9 @@ namespace DynamicModelMigrator.Test
         public double DoubleField { get; set; }
         public bool BooleanField { get; set; }
         public long LongField { get; set; }
+
+        [JsonField]
+        public string JsonField { get; set; }
     }
 
     public class AlteredTestClass : ClassWithId
@@ -125,6 +128,9 @@ namespace DynamicModelMigrator.Test
         public long DoubleField { get; set; }
         public string BooleanField { get; set; }
         public double LongField { get; set; }
+
+        [JsonField]
+        public string JsonField { get; set; }
     }
 
     public static class TestHelper
@@ -135,7 +141,7 @@ namespace DynamicModelMigrator.Test
             using (var conn = new SqlConnection(sqlConnectionBuilder.ToString()))
             {
                 conn.Open();
-                var command = new SqlCommand($"INSERT INTO {db}(StringField, IntegerField, DoubleField, BooleanField, LongField) VALUES('A', 1, 1.1, 0, 9999) ", conn);
+                var command = new SqlCommand($"INSERT INTO {db}(StringField, IntegerField, DoubleField, BooleanField, LongField, JsonField) VALUES('A', 1, 1.1, 0, 9999, '{{\"foo\": 2}}') ", conn);
                 command.ExecuteNonQuery();
             }
         }

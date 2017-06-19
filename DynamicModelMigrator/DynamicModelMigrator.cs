@@ -16,7 +16,6 @@ namespace DynamicModelMigrator
     {
         public static async Task MigrateAsync<T>(string connectionString, string tableName = null) where T: ClassWithId
         {
-
             if (string.IsNullOrWhiteSpace(connectionString))
             {
                 throw new ArgumentNullException("connectionString");
@@ -52,18 +51,30 @@ namespace DynamicModelMigrator
                 {
                     var isNullable = Nullable.GetUnderlyingType(typeMap[column]) != null;
                     var nullText = isNullable ? "NULL" : "NOT NULL";
+
                     var attributes = typeof(T)
-                                       .GetProperty(column.Name)
-                                       .GetCustomAttributes(false)
-                                       .ToDictionary(a => a.GetType().Name, a => a);
-                    var stringLengthAttribute = attributes.Any(x => x.Key == "StringLengthAttribute") ? attributes["StringLengthAttribute"] as StringLengthAttribute : null;
+                        .GetProperty(column.Name)
+                        .GetCustomAttributes(false)
+                        .ToDictionary(a => a.GetType().Name, a => a);
+
+                    var stringLengthAttribute = attributes.Any(x => x.Key == nameof(StringLengthAttribute)) ? attributes[nameof(StringLengthAttribute)] as StringLengthAttribute : null;
+                    var jsonFieldAttribute = attributes.Any(x => x.Key == nameof(JsonFieldAttribute)) ? attributes[nameof(JsonFieldAttribute)] as JsonFieldAttribute : null;
                     var lengthText = string.Empty;
+                    var constraintText = string.Empty;
+
                     if(stringLengthAttribute != null)
                     {
                         var length = stringLengthAttribute.Length > 0 ? stringLengthAttribute.Length.ToString() : "max";
                         lengthText = $"({length})";
                     }
-                    var sql = $"ALTER TABLE {tableName} ADD {column.Name} {CLRToSqlDbTypeMapper.GetSqlDbTypeFromClrType(typeMap[column])}{lengthText} {nullText}";
+
+                    if (jsonFieldAttribute != null)
+                    {
+                        lengthText = "(MAX)";
+                        constraintText = $"CONSTRAINT [{GetJsonConstraintName(column.Name)}] CHECK (ISJSON({column.Name}) > 0)";
+                    }
+
+                    var sql = $"ALTER TABLE {tableName} ADD {column.Name} {CLRToSqlDbTypeMapper.GetSqlDbTypeFromClrType(typeMap[column])}{lengthText} {nullText} {constraintText}";
                     var alterCmd = new SqlCommand(sql, conn);
                     alterCmd.ExecuteNonQuery();
                 }
@@ -72,6 +83,7 @@ namespace DynamicModelMigrator
                 var columnsToRemove = columnMap.Keys.Where(x => typeMap.Keys.All(tm => tm.Name != x));
                 foreach (var columnToRemove in columnsToRemove)
                 {
+                    RemoveJsonConstraint(tableName, columnToRemove, conn);
                     var sql = $"ALTER TABLE {tableName} DROP COLUMN {columnToRemove}";
                     var alterCmd = new SqlCommand(sql, conn);
                     alterCmd.ExecuteNonQuery();
@@ -111,7 +123,6 @@ namespace DynamicModelMigrator
                         {
 
                         }
-                   
 
                         // drop temp
                         sql = $"ALTER TABLE {tableName} DROP COLUMN TEMP_{columnToMigrate.Key}_TEMP";
@@ -122,6 +133,27 @@ namespace DynamicModelMigrator
 
                 conn.Close();
             }
+        }
+
+        private static void RemoveJsonConstraint(string tableName, string columnName, SqlConnection conn)
+        {
+            var constraintName = GetJsonConstraintName(columnName);
+
+            var sql = $@"
+                IF (OBJECT_ID('{constraintName}', 'C') IS NOT NULL)
+                BEGIN
+                    alter table {tableName}
+                    drop constraint [{constraintName}]
+                END
+            ";
+
+            var cmd = new SqlCommand(sql, conn);
+            cmd.ExecuteNonQuery();
+        }
+
+        private static string GetJsonConstraintName(string columnName)
+        {
+            return $"{columnName} should be formatted as JSON";
         }
 
         private static Dictionary<string, Type> GetColumnsToMigrate(Dictionary<string, Type> columnMap, Dictionary<System.Reflection.PropertyInfo, Type> typeMap)
