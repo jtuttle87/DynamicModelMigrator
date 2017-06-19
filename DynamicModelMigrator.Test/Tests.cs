@@ -20,39 +20,39 @@ namespace DynamicModelMigrator.Test
         [TestMethod]
         public void ShouldThrowErrorForNullConnectionString()
         {
-            Xunit.Assert.ThrowsAsync<ArgumentNullException>(() => { return DMM.Migrate<TestClass>(null); });
+            Xunit.Assert.ThrowsAsync<ArgumentNullException>(() => { return DMM.MigrateAsync<TestClass>(null); });
         }
 
         [TestMethod]
         public void ShouldThrowErrorForNullInitialCatalog()
         {
-            Xunit.Assert.ThrowsAsync<ArgumentNullException>(() => { return DMM.Migrate<TestClass>("something"); });
+            Xunit.Assert.ThrowsAsync<ArgumentNullException>(() => { return DMM.MigrateAsync<TestClass>("something"); });
         }
 
 
         [TestMethod]
         public void ShouldCreateDatabase()
         {
-            DMM.Migrate<TestClass>(TEST_DATA_SOURCE).Wait();
-            var exists = DMM.DatabaseExists(new System.Data.SqlClient.SqlConnectionStringBuilder(TEST_DATA_SOURCE)).Result;
+            DMM.MigrateAsync<TestClass>(TEST_DATA_SOURCE).Wait();
+            var exists = DMM.DatabaseExistsAsync(new System.Data.SqlClient.SqlConnectionStringBuilder(TEST_DATA_SOURCE)).Result;
             Xunit.Assert.True(exists);
         }
 
         [TestMethod]
         public void ShouldCreateTable()
         {
-            DMM.Migrate<TestClass>(TEST_DATA_SOURCE).Wait();
-            var exists = DMM.TableExists(new System.Data.SqlClient.SqlConnectionStringBuilder(TEST_DATA_SOURCE), "TestClass").Result;
+            DMM.MigrateAsync<TestClass>(TEST_DATA_SOURCE).Wait();
+            var exists = DMM.TableExistsAsync(new System.Data.SqlClient.SqlConnectionStringBuilder(TEST_DATA_SOURCE), "TestClass").Result;
             Xunit.Assert.True(exists);
         }
 
         [TestMethod]
         public void ShouldCreateAndThenMigrateTableByAddingColumns()
         {
-            DMM.Migrate<TestClass>(TEST_DATA_SOURCE, "TESTCLASS").Wait();
-            var exists = DMM.TableExists(new System.Data.SqlClient.SqlConnectionStringBuilder(TEST_DATA_SOURCE), "TestClass").Result;
+            DMM.MigrateAsync<TestClass>(TEST_DATA_SOURCE, "TESTCLASS").Wait();
+            var exists = DMM.TableExistsAsync(new System.Data.SqlClient.SqlConnectionStringBuilder(TEST_DATA_SOURCE), "TestClass").Result;
             Xunit.Assert.True(exists);
-            DMM.Migrate<MigratedTestClass>(TEST_DATA_SOURCE, "TESTCLASS").Wait();
+            DMM.MigrateAsync<MigratedTestClass>(TEST_DATA_SOURCE, "TESTCLASS").Wait();
             var matchesClass = TestHelper.DoesClassMatchType<MigratedTestClass>(TEST_DATA_SOURCE, "TESTCLASS").Result;
             Xunit.Assert.True(matchesClass);
         }
@@ -60,10 +60,10 @@ namespace DynamicModelMigrator.Test
         [TestMethod]
         public void ShouldCreateAndThenMigrateTableByRemovingColumns()
         {
-            DMM.Migrate<MigratedTestClass>(TEST_DATA_SOURCE, "TESTCLASS").Wait();
-            var exists = DMM.TableExists(new System.Data.SqlClient.SqlConnectionStringBuilder(TEST_DATA_SOURCE), "TestClass").Result;
+            DMM.MigrateAsync<MigratedTestClass>(TEST_DATA_SOURCE, "TESTCLASS").Wait();
+            var exists = DMM.TableExistsAsync(new System.Data.SqlClient.SqlConnectionStringBuilder(TEST_DATA_SOURCE), "TestClass").Result;
             Xunit.Assert.True(exists);
-            DMM.Migrate<TestClass>(TEST_DATA_SOURCE, "TESTCLASS").Wait();
+            DMM.MigrateAsync<TestClass>(TEST_DATA_SOURCE, "TESTCLASS").Wait();
             var matchesClass = TestHelper.DoesClassMatchType<TestClass>(TEST_DATA_SOURCE, "TESTCLASS").Result;
             Xunit.Assert.True(matchesClass);
         }
@@ -71,11 +71,11 @@ namespace DynamicModelMigrator.Test
         [TestMethod]
         public void ShouldCreateAndThenMigrateTableByChangingColumnDataTypesAndMigratingDataButFailingBecauseWTFMigratesAStringToAnInteger()
         {
-            DMM.Migrate<MigratedTestClass>(TEST_DATA_SOURCE, "TESTCLASS").Wait();
-            var exists = DMM.TableExists(new System.Data.SqlClient.SqlConnectionStringBuilder(TEST_DATA_SOURCE), "TestClass").Result;
+            DMM.MigrateAsync<MigratedTestClass>(TEST_DATA_SOURCE, "TESTCLASS").Wait();
+            var exists = DMM.TableExistsAsync(new System.Data.SqlClient.SqlConnectionStringBuilder(TEST_DATA_SOURCE), "TestClass").Result;
             Xunit.Assert.True(exists);
             TestHelper.AddRecord(TEST_DATA_SOURCE, "TESTCLASS");
-            DMM.Migrate<AlteredTestClass>(TEST_DATA_SOURCE, "TESTCLASS").Wait();
+            DMM.MigrateAsync<AlteredTestClass>(TEST_DATA_SOURCE, "TESTCLASS").Wait();
             var matchesClass = TestHelper.DoesClassMatchType<AlteredTestClass>(TEST_DATA_SOURCE, "TESTCLASS").Result;
             Xunit.Assert.True(matchesClass);
         }
@@ -83,11 +83,11 @@ namespace DynamicModelMigrator.Test
         [TestMethod]
         public void ShouldCreateAndThenMigrateTableByChangingColumnDataTypesAndMigratingData()
         {
-            DMM.Migrate<MigratedTestClass>(TEST_DATA_SOURCE, "TESTCLASS").Wait();
-            var exists = DMM.TableExists(new System.Data.SqlClient.SqlConnectionStringBuilder(TEST_DATA_SOURCE), "TestClass").Result;
+            DMM.MigrateAsync<MigratedTestClass>(TEST_DATA_SOURCE, "TESTCLASS").Wait();
+            var exists = DMM.TableExistsAsync(new System.Data.SqlClient.SqlConnectionStringBuilder(TEST_DATA_SOURCE), "TestClass").Result;
             Xunit.Assert.True(exists);
             TestHelper.AddRecord(TEST_DATA_SOURCE, "TESTCLASS");
-            DMM.Migrate<AlteredMigrationTestClass>(TEST_DATA_SOURCE, "TESTCLASS").Wait();
+            DMM.MigrateAsync<AlteredMigrationTestClass>(TEST_DATA_SOURCE, "TESTCLASS").Wait();
             var matchesClass = TestHelper.DoesClassMatchType<AlteredMigrationTestClass>(TEST_DATA_SOURCE, "TESTCLASS").Result;
             Xunit.Assert.True(matchesClass);
         }
@@ -116,6 +116,9 @@ namespace DynamicModelMigrator.Test
         public double DoubleField { get; set; }
         public bool BooleanField { get; set; }
         public long LongField { get; set; }
+
+        [JsonField]
+        public string JsonField { get; set; }
     }
 
     public class AlteredTestClass : ClassWithId
@@ -125,6 +128,9 @@ namespace DynamicModelMigrator.Test
         public long DoubleField { get; set; }
         public string BooleanField { get; set; }
         public double LongField { get; set; }
+
+        [JsonField]
+        public string JsonField { get; set; }
     }
 
     public static class TestHelper
@@ -135,7 +141,7 @@ namespace DynamicModelMigrator.Test
             using (var conn = new SqlConnection(sqlConnectionBuilder.ToString()))
             {
                 conn.Open();
-                var command = new SqlCommand($"INSERT INTO {db}(StringField, IntegerField, DoubleField, BooleanField, LongField) VALUES('A', 1, 1.1, 0, 9999) ", conn);
+                var command = new SqlCommand($"INSERT INTO {db}(StringField, IntegerField, DoubleField, BooleanField, LongField, JsonField) VALUES('A', 1, 1.1, 0, 9999, '{{\"foo\": 2}}') ", conn);
                 command.ExecuteNonQuery();
             }
         }
@@ -165,17 +171,16 @@ namespace DynamicModelMigrator.Test
                     command.ExecuteNonQuery();
                 }
             }
-            catch(Exception ex)
+            catch(Exception)
             {
                 // this will fail if the db doesn't exist
                 // which is ok because we don't want it to exist
             }
-            
         }
 
-        public async static Task<bool> DoesClassMatchType<T>(string conn, string tableName)
+        public static async Task<bool> DoesClassMatchType<T>(string conn, string tableName)
         {
-            var columnMap = await DMM.GetColumnMap(new SqlConnection(conn), tableName);
+            var columnMap = await DMM.GetColumnMapAsync(new SqlConnection(conn), tableName);
             var typeMap = DMM.GetTypeMap<T>();
             var columns = new List<string>();
             var typeProperties = new List<string>();
@@ -199,7 +204,6 @@ namespace DynamicModelMigrator.Test
                     match = false;
                 }
             }
-
 
             foreach(var typeProp in typeProperties)
             {

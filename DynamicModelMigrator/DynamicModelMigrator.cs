@@ -1,5 +1,4 @@
-﻿using Microsoft.SqlServer.Server;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
@@ -15,10 +14,8 @@ namespace DynamicModelMigrator
 
     public static class DMM
     {
-        
-        public async static Task Migrate<T>(string connectionString, string tableName = null) where T: ClassWithId
+        public static async Task MigrateAsync<T>(string connectionString, string tableName = null) where T: ClassWithId
         {
-
             if (string.IsNullOrWhiteSpace(connectionString))
             {
                 throw new ArgumentNullException("connectionString");
@@ -31,7 +28,7 @@ namespace DynamicModelMigrator
                 throw new ArgumentNullException("initialCatalog");
             }
 
-            await CreateDatabase(connection);
+            await CreateDatabaseAsync(connection);
 
             // if name not provided then use the name of the type
             if (string.IsNullOrWhiteSpace(tableName))
@@ -39,13 +36,13 @@ namespace DynamicModelMigrator
                 tableName = typeof(T).Name;
             }
 
-            await CreateTable(connection, tableName);
+            await CreateTableAsync(connection, tableName);
 
             using (var conn = new SqlConnection(connectionString))
             {
                 await conn.OpenAsync();
 
-                var columnMap = await GetColumnMap(conn, tableName);
+                var columnMap = await GetColumnMapAsync(conn, tableName);
                 var typeMap = GetTypeMap<T>();
 
                 // add columns that don't exist
@@ -54,18 +51,30 @@ namespace DynamicModelMigrator
                 {
                     var isNullable = Nullable.GetUnderlyingType(typeMap[column]) != null;
                     var nullText = isNullable ? "NULL" : "NOT NULL";
+
                     var attributes = typeof(T)
-                                       .GetProperty(column.Name)
-                                       .GetCustomAttributes(false)
-                                       .ToDictionary(a => a.GetType().Name, a => a);
-                    var stringLengthAttribute = attributes.Any(x => x.Key == "StringLengthAttribute") ? attributes["StringLengthAttribute"] as StringLengthAttribute : null;
+                        .GetProperty(column.Name)
+                        .GetCustomAttributes(false)
+                        .ToDictionary(a => a.GetType().Name, a => a);
+
+                    var stringLengthAttribute = attributes.Any(x => x.Key == nameof(StringLengthAttribute)) ? attributes[nameof(StringLengthAttribute)] as StringLengthAttribute : null;
+                    var jsonFieldAttribute = attributes.Any(x => x.Key == nameof(JsonFieldAttribute)) ? attributes[nameof(JsonFieldAttribute)] as JsonFieldAttribute : null;
                     var lengthText = string.Empty;
+                    var constraintText = string.Empty;
+
                     if(stringLengthAttribute != null)
                     {
                         var length = stringLengthAttribute.Length > 0 ? stringLengthAttribute.Length.ToString() : "max";
                         lengthText = $"({length})";
                     }
-                    var sql = $"ALTER TABLE {tableName} ADD {column.Name} {CLRToSqlDbTypeMapper.GetSqlDbTypeFromClrType(typeMap[column])}{lengthText} {nullText}";
+
+                    if (jsonFieldAttribute != null)
+                    {
+                        lengthText = "(MAX)";
+                        constraintText = $"CONSTRAINT [{GetJsonConstraintName(column.Name)}] CHECK (ISJSON({column.Name}) > 0)";
+                    }
+
+                    var sql = $"ALTER TABLE {tableName} ADD {column.Name} {CLRToSqlDbTypeMapper.GetSqlDbTypeFromClrType(typeMap[column])}{lengthText} {nullText} {constraintText}";
                     var alterCmd = new SqlCommand(sql, conn);
                     alterCmd.ExecuteNonQuery();
                 }
@@ -74,6 +83,7 @@ namespace DynamicModelMigrator
                 var columnsToRemove = columnMap.Keys.Where(x => typeMap.Keys.All(tm => tm.Name != x));
                 foreach (var columnToRemove in columnsToRemove)
                 {
+                    RemoveJsonConstraint(tableName, columnToRemove, conn);
                     var sql = $"ALTER TABLE {tableName} DROP COLUMN {columnToRemove}";
                     var alterCmd = new SqlCommand(sql, conn);
                     alterCmd.ExecuteNonQuery();
@@ -113,7 +123,6 @@ namespace DynamicModelMigrator
                         {
 
                         }
-                   
 
                         // drop temp
                         sql = $"ALTER TABLE {tableName} DROP COLUMN TEMP_{columnToMigrate.Key}_TEMP";
@@ -124,6 +133,27 @@ namespace DynamicModelMigrator
 
                 conn.Close();
             }
+        }
+
+        private static void RemoveJsonConstraint(string tableName, string columnName, SqlConnection conn)
+        {
+            var constraintName = GetJsonConstraintName(columnName);
+
+            var sql = $@"
+                IF (OBJECT_ID('{constraintName}', 'C') IS NOT NULL)
+                BEGIN
+                    alter table {tableName}
+                    drop constraint [{constraintName}]
+                END
+            ";
+
+            var cmd = new SqlCommand(sql, conn);
+            cmd.ExecuteNonQuery();
+        }
+
+        private static string GetJsonConstraintName(string columnName)
+        {
+            return $"{columnName} should be formatted as JSON";
         }
 
         private static Dictionary<string, Type> GetColumnsToMigrate(Dictionary<string, Type> columnMap, Dictionary<System.Reflection.PropertyInfo, Type> typeMap)
@@ -154,7 +184,7 @@ namespace DynamicModelMigrator
             return typeMap;
         }
 
-        public async static Task<Dictionary<string, Type>> GetColumnMap(SqlConnection conn, string tableName)
+        public static async Task<Dictionary<string, Type>> GetColumnMapAsync(SqlConnection conn, string tableName)
         {
             if (conn != null && conn.State == ConnectionState.Closed)
             {
@@ -175,10 +205,9 @@ namespace DynamicModelMigrator
             return columnMap;
         }
 
-
-        private static async Task CreateTable(SqlConnectionStringBuilder connection, string table)
+        private static async Task CreateTableAsync(SqlConnectionStringBuilder connection, string table)
         {
-            var tableExists = await TableExists(connection, table);
+            var tableExists = await TableExistsAsync(connection, table);
             if (!tableExists)
             {
                 using (var conn = new SqlConnection(connection.ToString()))
@@ -188,7 +217,7 @@ namespace DynamicModelMigrator
                     var cmd = new SqlCommand(sql, conn);
                     await cmd.ExecuteNonQueryAsync();
                 }
-                tableExists = await TableExists(connection, table);
+                tableExists = await TableExistsAsync(connection, table);
                 if (!tableExists)
                 {
                     throw new Exception("unable to create table");
@@ -196,9 +225,9 @@ namespace DynamicModelMigrator
             }
         }
 
-        private static async Task CreateDatabase(SqlConnectionStringBuilder connection)
+        private static async Task CreateDatabaseAsync(SqlConnectionStringBuilder connection)
         {
-            var dbExists = await DatabaseExists(connection);
+            var dbExists = await DatabaseExistsAsync(connection);
             if (!dbExists)
             {
                 var masterConnection = new SqlConnectionStringBuilder(connection.ToString());
@@ -210,7 +239,7 @@ namespace DynamicModelMigrator
                     var cmd = new SqlCommand(sql, conn);
                     cmd.ExecuteNonQuery();
                 }
-                dbExists = await DatabaseExists(connection);
+                dbExists = await DatabaseExistsAsync(connection);
                 if (!dbExists)
                 {
                     throw new Exception("unable to create database");
@@ -218,7 +247,7 @@ namespace DynamicModelMigrator
             }
         }
 
-        public async static Task<bool> DatabaseExists(SqlConnectionStringBuilder connection)
+        public static async Task<bool> DatabaseExistsAsync(SqlConnectionStringBuilder connection)
         {
             var masterConnection = new SqlConnectionStringBuilder(connection.ToString());
             masterConnection.InitialCatalog = "master";
@@ -234,7 +263,7 @@ namespace DynamicModelMigrator
             }
         }
 
-        public async static Task<bool> TableExists(SqlConnectionStringBuilder connection, string table)
+        public static async Task<bool> TableExistsAsync(SqlConnectionStringBuilder connection, string table)
         {
             using (var conn = new SqlConnection(connection.ToString()))
             {
@@ -254,6 +283,5 @@ namespace DynamicModelMigrator
                 }
             }
         }
-
     }
 }
