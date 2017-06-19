@@ -1,5 +1,4 @@
-﻿using Microsoft.SqlServer.Server;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
@@ -15,8 +14,7 @@ namespace DynamicModelMigrator
 
     public static class DMM
     {
-        
-        public async static Task Migrate<T>(string connectionString, string tableName = null) where T: ClassWithId
+        public static async Task MigrateAsync<T>(string connectionString, string tableName = null) where T: ClassWithId
         {
 
             if (string.IsNullOrWhiteSpace(connectionString))
@@ -31,7 +29,7 @@ namespace DynamicModelMigrator
                 throw new ArgumentNullException("initialCatalog");
             }
 
-            await CreateDatabase(connection);
+            await CreateDatabaseAsync(connection);
 
             // if name not provided then use the name of the type
             if (string.IsNullOrWhiteSpace(tableName))
@@ -39,13 +37,13 @@ namespace DynamicModelMigrator
                 tableName = typeof(T).Name;
             }
 
-            await CreateTable(connection, tableName);
+            await CreateTableAsync(connection, tableName);
 
             using (var conn = new SqlConnection(connectionString))
             {
                 await conn.OpenAsync();
 
-                var columnMap = await GetColumnMap(conn, tableName);
+                var columnMap = await GetColumnMapAsync(conn, tableName);
                 var typeMap = GetTypeMap<T>();
 
                 // add columns that don't exist
@@ -154,7 +152,7 @@ namespace DynamicModelMigrator
             return typeMap;
         }
 
-        public async static Task<Dictionary<string, Type>> GetColumnMap(SqlConnection conn, string tableName)
+        public static async Task<Dictionary<string, Type>> GetColumnMapAsync(SqlConnection conn, string tableName)
         {
             if (conn != null && conn.State == ConnectionState.Closed)
             {
@@ -175,10 +173,9 @@ namespace DynamicModelMigrator
             return columnMap;
         }
 
-
-        private static async Task CreateTable(SqlConnectionStringBuilder connection, string table)
+        private static async Task CreateTableAsync(SqlConnectionStringBuilder connection, string table)
         {
-            var tableExists = await TableExists(connection, table);
+            var tableExists = await TableExistsAsync(connection, table);
             if (!tableExists)
             {
                 using (var conn = new SqlConnection(connection.ToString()))
@@ -188,7 +185,7 @@ namespace DynamicModelMigrator
                     var cmd = new SqlCommand(sql, conn);
                     await cmd.ExecuteNonQueryAsync();
                 }
-                tableExists = await TableExists(connection, table);
+                tableExists = await TableExistsAsync(connection, table);
                 if (!tableExists)
                 {
                     throw new Exception("unable to create table");
@@ -196,9 +193,9 @@ namespace DynamicModelMigrator
             }
         }
 
-        private static async Task CreateDatabase(SqlConnectionStringBuilder connection)
+        private static async Task CreateDatabaseAsync(SqlConnectionStringBuilder connection)
         {
-            var dbExists = await DatabaseExists(connection);
+            var dbExists = await DatabaseExistsAsync(connection);
             if (!dbExists)
             {
                 var masterConnection = new SqlConnectionStringBuilder(connection.ToString());
@@ -210,7 +207,7 @@ namespace DynamicModelMigrator
                     var cmd = new SqlCommand(sql, conn);
                     cmd.ExecuteNonQuery();
                 }
-                dbExists = await DatabaseExists(connection);
+                dbExists = await DatabaseExistsAsync(connection);
                 if (!dbExists)
                 {
                     throw new Exception("unable to create database");
@@ -218,7 +215,7 @@ namespace DynamicModelMigrator
             }
         }
 
-        public async static Task<bool> DatabaseExists(SqlConnectionStringBuilder connection)
+        public static async Task<bool> DatabaseExistsAsync(SqlConnectionStringBuilder connection)
         {
             var masterConnection = new SqlConnectionStringBuilder(connection.ToString());
             masterConnection.InitialCatalog = "master";
@@ -234,7 +231,7 @@ namespace DynamicModelMigrator
             }
         }
 
-        public async static Task<bool> TableExists(SqlConnectionStringBuilder connection, string table)
+        public static async Task<bool> TableExistsAsync(SqlConnectionStringBuilder connection, string table)
         {
             using (var conn = new SqlConnection(connection.ToString()))
             {
@@ -254,6 +251,5 @@ namespace DynamicModelMigrator
                 }
             }
         }
-
     }
 }
